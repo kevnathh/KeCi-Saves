@@ -37,86 +37,90 @@ LIST_NAMA = ["-", "Kevin", "Cia", "Kevin Cia", "Fee Bank"]
 FLOW = ["MASUK", "KELUAR"]
 
 # --- Form input data ---
-with st.form(key="Sheet1", clear_on_submit=True):
-    tanggal = st.date_input(label="TANGGAL*")
-    flow = st.selectbox("MASUK/KELUAR*", options=FLOW)
-    difference = st.number_input(label="INPUT UANG*", step=1000)
-    who = st.selectbox("SIAPA?*", options=LIST_NAMA)
-    notes = st.text_input(label="NOTES")
-    password = st.text_input(label="PASSWORD*", type="password")
+with st.expander(label="✍️ Input Transaksi", expanded=True):
+    with st.form(key="Sheet1", clear_on_submit=True):
+        tanggal = st.date_input(label="TANGGAL*")
+        flow = st.selectbox("MASUK/KELUAR*", options=FLOW)
+        difference = st.number_input(label="INPUT UANG*", step=1000)
+        who = st.selectbox("SIAPA?*", options=LIST_NAMA)
+        notes = st.text_input(label="NOTES")
+        password = st.text_input(label="PASSWORD*", type="password")
 
-    st.markdown("**Kolom dengan * wajib diisi**")
-    submit_button = st.form_submit_button(label="💾 Submit", type="primary")
+        st.markdown("**Kolom dengan * wajib diisi**")
+        submit_button = st.form_submit_button(label="💾 Submit", type="primary")
 
-    if submit_button:
-        if not tanggal or not difference or not who or not flow:
-            st.warning("Isi kolom-kolom wajib!")
-            st.stop()
-        elif password != FORM_PASSWORD:
-            st.warning("Password salah!")
-            st.stop()
-        else:
-            # Buat data baru
-            data_baru = pd.DataFrame(
-                [{
-                    "TANGGAL": tanggal,
-                    "DIFFERENCE\n(INPUT)": difference if flow == "MASUK" else -difference,
-                    "MASUK/KELUAR?": flow,
-                    "SIAPA?": who,
-                    "NOTES": notes,
-                }]
-            )
+        if submit_button:
+            if not tanggal or not difference or not who or not flow:
+                st.warning("Isi kolom-kolom wajib!")
+                st.stop()
+            elif password != FORM_PASSWORD:
+                st.warning("Password salah!")
+                st.stop()
+            else:
+                # Buat data baru
+                data_baru = pd.DataFrame(
+                    [{
+                        "TANGGAL": tanggal,
+                        "DIFFERENCE\n(INPUT)": difference if flow == "MASUK" else -difference,
+                        "MASUK/KELUAR?": flow,
+                        "SIAPA?": who,
+                        "NOTES": notes,
+                    }]
+                )
 
-            # Gabungkan lalu hitung ulang saldo
-            updated_df = pd.concat([existing_data, data_baru], ignore_index=True)
-            updated_df = hitung_saldo(updated_df)
+                # Gabungkan lalu hitung ulang saldo
+                updated_df = pd.concat([existing_data, data_baru], ignore_index=True)
+                updated_df = hitung_saldo(updated_df)
 
-            # Simpan ke Google Sheets
-            conn.update(worksheet="Sheet1", data=updated_df)
-            st.success("Data berhasil ditambahkan!")
-            st.rerun()
+                # Simpan ke Google Sheets
+                conn.update(worksheet="Sheet1", data=updated_df)
+                st.success("Data berhasil ditambahkan!")
+                st.rerun()
 
 # --- Setelah form: tampilkan saldo terakhir ---
-if not existing_data.empty:
-    existing_data = hitung_saldo(existing_data)  # pastikan saldo selalu terupdate
-    current_saldo = existing_data["SALDO"].iloc[-1]
-else:
-    current_saldo = 0
+with st.expander(label="💰 Saldo Sekarang", expanded=True):
+    if not existing_data.empty:
+        existing_data = hitung_saldo(existing_data)  # pastikan saldo selalu terupdate
+        current_saldo = existing_data["SALDO"].iloc[-1]
+    else:
+        current_saldo = 0
 
-st.metric(label="💰 Saldo Sekarang", value=f"Rp {current_saldo:,.0f}")
+    st.metric(label="Saldo:", value=f"Rp {current_saldo:,.0f}")
 
 # --- Data Editor ---
-st.subheader("Tabel Tabungan")
-edited_df = st.data_editor(
-    existing_data,
-    num_rows="dynamic",
-    use_container_width=True,
-    column_config={
-        "DIFFERENCE\n(INPUT)": st.column_config.NumberColumn(
-            "DIFFERENCE (INPUT)",
-            help="Jumlah uang masuk (+) atau keluar (-)",
-            format="Rp. %d",
-            step=1000,
-        ),
-        "SALDO": st.column_config.NumberColumn(
-            "SALDO",
-            help="Saldo otomatis dihitung",
-            format="Rp. %d",
-            disabled=True,   # 🔒 SALDO tidak bisa diubah manual
-        ),
-    }
-)
+with st.expander(label="📝 Tabel & Edit Tabungan", expanded=True):
+    st.subheader("Tabel Tabungan")
+    edited_df = st.data_editor(
+        existing_data,
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "DIFFERENCE\n(INPUT)": st.column_config.NumberColumn(
+                "DIFFERENCE (INPUT)",
+                help="Jumlah uang masuk (+) atau keluar (-)",
+                format="Rp. %d",
+                step=1000,
+            ),
+            "SALDO": st.column_config.NumberColumn(
+                "SALDO",
+                help="Saldo otomatis dihitung",
+                format="Rp. %d",
+                disabled=True,   # 🔒 SALDO tidak bisa diubah manual
+            ),
+        }
+    )
 
-# --- Simpan perubahan manual ---
-with st.form("update_form", clear_on_submit=True):
-    update_pass = st.text_input("Password Update Data*", type="password")
-    update_button = st.form_submit_button("💾 Simpan Perubahan ke Spreadsheet", type="primary")
+    # --- Simpan perubahan manual ---
+    with st.form("update_form", clear_on_submit=True):
+        update_pass = st.text_input("Password Update Data*", type="password")
+        update_button = st.form_submit_button("💾 Simpan Perubahan ke Spreadsheet", type="primary")
 
-    if update_button:
-        if update_pass != FORM_PASSWORD:
-            st.error("Password salah untuk update data!")
-        else:
-            edited_df = hitung_saldo(edited_df)  # hitung ulang saldo sebelum simpan
-            conn.update(worksheet="Sheet1", data=edited_df)
-            st.success("Perubahan berhasil disimpan ke Google Sheets!")
-            st.rerun()
+        if update_button:
+            if update_pass != FORM_PASSWORD:
+                st.error("Password salah untuk update data!")
+                st.rerun()
+            else:
+                edited_df = hitung_saldo(edited_df)  # hitung ulang saldo sebelum simpan
+                conn.update(worksheet="Sheet1", data=edited_df)
+                st.success("Perubahan berhasil disimpan ke Google Sheets!")
+                st.rerun()
