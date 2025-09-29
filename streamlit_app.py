@@ -13,8 +13,8 @@ def hitung_saldo(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # --- Tampilan utama ---
-st.title("🌈 KECI SAVES")
-st.markdown("💙 Teman Menabung KeCi")
+st.title("💙 KECI SAVES 💰")
+st.markdown("Teman Menabung KeCi")
 st.link_button(
     label="Buka Spreadsheet",
     url="https://docs.google.com/spreadsheets/d/1iDoYhhNWSWjfGlDZVDYHYB_-e77ZEAIIP_5QOd5ra9E/edit?gid=0#gid=0"
@@ -86,8 +86,30 @@ else:
 
 st.metric(label="💰 Saldo Sekarang", value=f"{current_saldo:,.0f}")
 
+# --- Setelah form: tampilkan saldo terakhir ---
+if not existing_data.empty:
+    existing_data = hitung_saldo(existing_data)  # pastikan saldo selalu terupdate
+    current_saldo = existing_data["SALDO"].iloc[-1]
+else:
+    current_saldo = 0
+
+st.metric(label="💰 Saldo Sekarang", value=f"{current_saldo:,.0f}")
+
+# --- Line Chart Saldo ---
+show_chart = st.checkbox("📈 Tampilkan Grafik Saldo", value=True)
+
+if show_chart and not existing_data.empty:
+    st.line_chart(
+        existing_data,
+        x="TANGGAL",
+        y="SALDO",
+        height=300,
+        use_container_width=True,
+    )
+
+
 # --- Data Editor ---
-st.subheader("Data Tabungan")
+st.subheader("Tabel Tabungan")
 
 edited_df = st.data_editor(
     existing_data,
