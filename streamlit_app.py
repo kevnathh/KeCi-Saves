@@ -3,8 +3,8 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
 # Display Title and Description
-st.title("rainbow:[KECI SAVES]")
-st.markdown("blue:[Teman Menabung KeCi]")
+st.title("KECI SAVES")
+st.markdown("Teman Menabung KeCi")
 st.link_button(label="Buka Spreadsheet", url="https://docs.google.com/spreadsheets/d/1iDoYhhNWSWjfGlDZVDYHYB_-e77ZEAIIP_5QOd5ra9E/edit?gid=0#gid=0")
 
 # PW
@@ -37,7 +37,7 @@ with st.form(key="Sheet1", clear_on_submit=True):
     password = st.text_input(label="PASSWORD", type="password")
 
     st.markdown("**wajib*")
-    submit_button = st.form_submit_button(label="Submit")
+    submit_button = st.form_submit_button(label="💾 Submit", type="PRIMARY")
 
     if submit_button:
         if not tanggal or not difference or not who or not flow:
@@ -101,7 +101,12 @@ edited_df = st.data_editor(
 )
 
 # Simpan perubahan manual ke Google Sheets
-if st.button("💾 Simpan Perubahan ke Spreadsheet"):
-    conn.update(worksheet="Sheet1", data=edited_df)
-    st.success("Perubahan berhasil disimpan ke Google Sheets!")
-    st.rerun()
+update_pass = st.text_input("Password Update Data", type="password")
+
+if st.button("💾 Simpan Perubahan ke Spreadsheet", type="primary"):
+    if update_pass != FORM_PASSWORD:
+        st.error("Password salah untuk update data!")
+    else:
+        conn.update(worksheet="Sheet1", data=edited_df)
+        st.success("Perubahan berhasil disimpan ke Google Sheets!")
+        st.rerun()
