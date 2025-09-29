@@ -3,9 +3,12 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 
 # Display Title and Description
-st.title("KECI SAVES")
-st.markdown("Teman Menabung KeCi")
+st.title("rainbow:[KECI SAVES]")
+st.markdown("blue:[Teman Menabung KeCi]")
 st.link_button(label="Buka Spreadsheet", url="https://docs.google.com/spreadsheets/d/1iDoYhhNWSWjfGlDZVDYHYB_-e77ZEAIIP_5QOd5ra9E/edit?gid=0#gid=0")
+
+# PW
+FORM_PASSWORD = st.secrets["credentials"]["form_password"]
 
 # GSheets Connection
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -31,6 +34,7 @@ with st.form(key="Sheet1", clear_on_submit=True):
     difference = st.number_input(label="INPUT UANG*")
     who = st.selectbox("SIAPA?*", options=LIST_NAMA)
     notes = st.text_input(label="NOTES")
+    password = st.text_input(label="PASSWORD", type="password")
 
     st.markdown("**wajib*")
     submit_button = st.form_submit_button(label="Submit")
@@ -38,6 +42,9 @@ with st.form(key="Sheet1", clear_on_submit=True):
     if submit_button:
         if not tanggal or not difference or not who or not flow:
             st.warning("Isi kolom-kolom wajib!")
+            st.stop()
+        elif password != FORM_PASSWORD:
+            st.warning("Password salah!")
             st.stop()
         else:
             # Ambil saldo terakhir
@@ -73,6 +80,28 @@ with st.form(key="Sheet1", clear_on_submit=True):
             existing_data = conn.read(worksheet="Sheet1", usecols=list(range(6)), ttl=5)
             existing_data = existing_data.dropna(how="all")
 
-# --- Tampilkan data terbaru ---
+# --- Setelah form ---
+if not existing_data.empty:
+    current_saldo = existing_data["SALDO"].iloc[-1]
+else:
+    current_saldo = 0
+
+st.metric(label="💰 Saldo Sekarang", value=f"{current_saldo:,.0f}")
+
+# --- Tampilkan data dengan editor ---
 st.subheader("Data Tabungan")
-st.dataframe(existing_data)
+
+edited_df = st.data_editor(
+    existing_data,
+    num_rows="dynamic",
+    use_container_width=True,
+    column_config={
+        "SALDO": st.column_config.NumberColumn(disabled=True),   # 🔒 SALDO dikunci
+    }
+)
+
+# Simpan perubahan manual ke Google Sheets
+if st.button("💾 Simpan Perubahan ke Spreadsheet"):
+    conn.update(worksheet="Sheet1", data=edited_df)
+    st.success("Perubahan berhasil disimpan ke Google Sheets!")
+    st.rerun()
