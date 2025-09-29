@@ -14,7 +14,7 @@ def hitung_saldo(df: pd.DataFrame) -> pd.DataFrame:
 
 # --- Tampilan utama ---
 st.title("💙 KECI SAVES 💰")
-st.markdown("Teman Menabung KeCi")
+st.markdown("   Teman Menabung KeCi")
 st.link_button(
     label="Buka Spreadsheet",
     url="https://docs.google.com/spreadsheets/d/1iDoYhhNWSWjfGlDZVDYHYB_-e77ZEAIIP_5QOd5ra9E/edit?gid=0#gid=0"
@@ -29,6 +29,11 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 # --- Fetch data awal ---
 existing_data = conn.read(worksheet="Sheet1", usecols=list(range(6)), ttl=0)
 existing_data = existing_data.dropna(how="all")
+
+# pastikan kolom tanggal jadi datetime dan urut
+if not existing_data.empty:
+    existing_data["TANGGAL"] = pd.to_datetime(existing_data["TANGGAL"], errors="coerce")
+    existing_data = existing_data.sort_values("TANGGAL").reset_index(drop=True)
 
 # --- List pilihan ---
 LIST_NAMA = ["-", "Kevin", "Cia", "Kevin Cia", "Fee Bank"]
@@ -58,7 +63,7 @@ with st.form(key="Sheet1", clear_on_submit=True):
             data_baru = pd.DataFrame(
                 [
                     {
-                        "TANGGAL": tanggal,
+                        "TANGGAL": pd.to_datetime(tanggal),
                         "DIFFERENCE\n(INPUT)": difference if flow == "MASUK" else -difference,
                         "MASUK/KELUAR?": flow,
                         "SIAPA?": who,
@@ -70,6 +75,7 @@ with st.form(key="Sheet1", clear_on_submit=True):
             # Gabungkan lalu hitung ulang saldo
             updated_df = pd.concat([existing_data, data_baru], ignore_index=True)
             updated_df = hitung_saldo(updated_df)
+            updated_df = updated_df.sort_values("TANGGAL").reset_index(drop=True)
 
             # Simpan ke Google Sheets
             conn.update(worksheet="Sheet1", data=updated_df)
@@ -86,30 +92,15 @@ else:
 
 st.metric(label="💰 Saldo Sekarang", value=f"{current_saldo:,.0f}")
 
-# --- Setelah form: tampilkan saldo terakhir ---
-if not existing_data.empty:
-    existing_data = hitung_saldo(existing_data)  # pastikan saldo selalu terupdate
-    current_saldo = existing_data["SALDO"].iloc[-1]
-else:
-    current_saldo = 0
-
-st.metric(label="💰 Saldo Sekarang", value=f"{current_saldo:,.0f}")
-
-# --- Line Chart Saldo ---
-show_chart = st.checkbox("📈 Tampilkan Grafik Saldo", value=True)
+# --- Line Chart toggle ---
+st.subheader("📈 Grafik Saldo")
+show_chart = st.checkbox("Tampilkan Grafik Saldo", value=True)
 
 if show_chart and not existing_data.empty:
-    st.line_chart(
-        existing_data,
-        x="TANGGAL",
-        y="SALDO",
-        height=300,
-        use_container_width=True,
-    )
-
+    st.line_chart(existing_data, x="TANGGAL", y="SALDO", use_container_width=True)
 
 # --- Data Editor ---
-st.subheader("Tabel Tabungan")
+st.subheader("📋 Tabel Tabungan")
 
 edited_df = st.data_editor(
     existing_data,
@@ -128,6 +119,7 @@ if st.button("💾 Simpan Perubahan ke Spreadsheet", type="primary"):
         st.error("Password salah untuk update data!")
     else:
         edited_df = hitung_saldo(edited_df)  # hitung ulang saldo sebelum simpan
+        edited_df = edited_df.sort_values("TANGGAL").reset_index(drop=True)
         conn.update(worksheet="Sheet1", data=edited_df)
         st.success("Perubahan berhasil disimpan ke Google Sheets!")
         st.rerun()
